@@ -29,22 +29,31 @@ module uart_rx #(
     input                   reset,
     input                   i_ticks,
     input                   i_rx,
-    output                  o_rx_done,
+    
+    output reg              o_rx_done,
     output [DATA_WIDTH-1:0] o_data_byte
 );
 
     // State machine States
-    localparam [3:0]    IDLE_STATE  = 4'b0001,
-                        START_STATE = 4'b0010,
-                        DATA_STATE  = 4'b0010,
-                        STOP_STATE  = 4'b1000;
+    localparam [3:0]    IDLE_STATE  = 4'b0001;
+    localparam [3:0]    START_STATE = 4'b0010;
+    localparam [3:0]    DATA_STATE  = 4'b0100;
+    localparam [3:0]    STOP_STATE  = 4'b1000;
 
     // Registers
-    reg [3:0]               state, next_state;
-    reg [3:0]               tick_reg, tick_next;
-    reg [2:0]               nbits_reg, nbits_next;
-    reg [DATA_WIDTH-1:0]    data_reg, data_next;
-    reg                     rx_done;
+    reg [3:0]               state;
+    reg [3:0]               next_state;
+
+    reg [3:0]               tick_reg;
+    reg [3:0]               tick_next;
+    
+    reg [2:0]               nbits_reg;
+    reg [2:0]               nbits_next;
+
+    reg [DATA_WIDTH-1:0]    data_reg;
+    reg [DATA_WIDTH-1:0]    data_next;
+
+    //reg                     rx_done;
 
     // Register logic
     always @(posedge clk ) begin
@@ -52,7 +61,8 @@ module uart_rx #(
             state <= IDLE_STATE;
             tick_reg <= 0;
             nbits_reg <= 0;
-            data_reg <= 0;            
+            data_reg <= 0;  
+            o_rx_done = 1'b0;          
         end
         else begin
             state <= next_state;
@@ -63,6 +73,11 @@ module uart_rx #(
     end
 
     always @(*) begin
+        next_state = state;
+        tick_next = tick_reg;
+        nbits_next = nbits_reg;
+        data_next = data_reg;
+        
         case (state)
             IDLE_STATE: begin
                 if(~i_rx) begin
@@ -72,9 +87,10 @@ module uart_rx #(
             end
             
             START_STATE: begin
+                o_rx_done = 1'b0;         //PROVISORIO. PASARLO A IDLE
                 if (i_ticks) begin
                     if(tick_reg == 7) begin
-                        next_state = START_STATE;
+                        next_state = DATA_STATE;
                         tick_next = 0;
                         nbits_next = 0;
                     end
@@ -103,16 +119,18 @@ module uart_rx #(
                 if (i_ticks) begin
                     if (tick_reg == (SB_TICKS-1)) begin
                         next_state = IDLE_STATE;
-                        rx_done = 1'b1;                        
+                        o_rx_done = 1'b1;                        
                     end 
                     else
                         tick_next = tick_reg + 1;                        
                 end
             end
+            default: 
+            next_state = IDLE_STATE;   
         endcase 
     end
 
     assign o_data_byte = data_reg;
-    assign o_rx_done = rx_done;
+    //assign o_rx_done = rx_done;
 
 endmodule

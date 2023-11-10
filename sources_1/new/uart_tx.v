@@ -25,27 +25,37 @@ module uart_tx #(
                 SB_TICKS   = 16
 )
 (
-    input                   clk,
-    input                   reset,
-    input                   i_tx_signal,    // begin data transmission
-    input                   i_ticks,        // from baud rate generator
-    input [DATA_WIDTH-1:0]  i_data_byte,    // data word from interface
-    output reg              o_tx_done,      //end of transmission
-    output                  tx
+    input wire                   clk,
+    input wire                   reset,
+    input wire                   i_tx_signal,    // begin data transmission
+    input wire                   i_ticks,        // from baud rate generator
+    input wire [DATA_WIDTH-1:0]  i_data_byte,    // data word from interface
+    output reg                   o_tx_done,      //end of transmission
+    output wire                  o_tx
     );
 
     // State machine States
-    localparam [3:0]    IDLE_STATE  = 4'b0001,
-                        START_STATE = 4'b0010,
-                        DATA_STATE  = 4'b0010,
-                        STOP_STATE  = 4'b1000;
+    localparam [3:0]    IDLE_STATE  = 4'b0001;
+    localparam [3:0]    START_STATE = 4'b0010;
+    localparam [3:0]    DATA_STATE  = 4'b0100;
+    localparam [3:0]    STOP_STATE  = 4'b1000;
 
     // Registers
-    reg [3:0]               state, next_state;
-    reg [3:0]               tick_reg, tick_next;
-    reg [2:0]               nbits_reg, nbits_next;
-    reg [DATA_WIDTH-1:0]    data_reg, data_next;
-    reg                     tx_reg, tx_next;
+    reg [3:0]               state;
+    reg [3:0]               next_state;
+
+    reg [3:0]               tick_reg;
+    reg [3:0]               tick_next;
+    
+    reg [2:0]               nbits_reg;
+    reg [2:0]               nbits_next;
+    
+    reg [DATA_WIDTH-1:0]    data_reg;
+    reg [DATA_WIDTH-1:0]    data_next;
+
+    reg                     tx_reg;
+    reg                     tx_next;
+
 
     // Register logic
     always @(posedge clk) begin
@@ -54,7 +64,7 @@ module uart_tx #(
             tick_reg <= 0;
             nbits_reg <= 0;
             data_reg <= 0;
-            tx_reg <= 1;
+            tx_reg <= 1'b1;
         end
         else begin
             state <= next_state;
@@ -63,7 +73,7 @@ module uart_tx #(
             data_reg <= data_next;
             tx_reg <= tx_next;
         end   
-        end
+    end
 
     // State machine logic
     always @(*) begin
@@ -79,7 +89,8 @@ module uart_tx #(
                 tx_next = 1'b1;
                 if(i_tx_signal) begin
                     next_state = START_STATE;
-                    tx_next = 0;
+                    tick_next = 0;
+                    //o_tx_done = 1'b0;
                     data_next = i_data_byte;
                 end             
             end
@@ -87,7 +98,7 @@ module uart_tx #(
             START_STATE: begin
                 tx_next = 1'b0;
                 if(i_ticks)begin
-                    if (tick_reg == 7) begin
+                    if (tick_reg == 15) begin
                         next_state = DATA_STATE;
                         tick_next = 0;
                         nbits_next = 0;
@@ -128,6 +139,6 @@ module uart_tx #(
     end
 
     // Output Logic
-    assign tx = tx_reg;
+    assign o_tx = tx_reg;
 
 endmodule

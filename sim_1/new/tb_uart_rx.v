@@ -21,25 +21,25 @@
 
 module tb_uart_rx;
 
-    parameter freq = 100_000_000;
+    // PARAMETERS
+    parameter freq = 100000000;
     parameter baud_rate = 19200;
     parameter N = 10;
-    
-    // Definición de los parámetros del módulo UART
     parameter DATA_WIDTH = 8;
     parameter STOP_WIDTH = 1;
     
-    // Definición de las señales necesarias para la simulación
+    // INPUTS
     reg clk;
     reg reset;
     reg i_rx;
 
-    wire [DATA_WIDTH-1:0] rx_data;
+    // OUTPUTS
+    wire [DATA_WIDTH-1:0] o_data_byte;
     wire rx_done;
     wire tick;
 
-    localparam demora = 52160;
-    localparam byte_to_rx = 8'b11010110;
+    localparam                  demora = 52080;
+    localparam [DATA_WIDTH-1:0] byte_to_rx = 8'b11010110;
     
     integer data_index = 0;
     integer stop_index = 0;
@@ -60,11 +60,14 @@ module tb_uart_rx;
         .o_data_byte(o_data_byte)
     );
     
+    always begin
+        #5 clk = ~clk; // clk 100[MHz]
+    end
    
 
     initial begin
 
-        clk = 0;
+        clk = 1'b0;
         reset = 1'b1;
         i_rx = 1'b1;
 
@@ -72,7 +75,7 @@ module tb_uart_rx;
         reset = 1'b0;
         
         #demora
-        i_rx = 1'b0;
+        i_rx = 1'b0;    // Bit de START
 
         #demora        
        ////DATA
